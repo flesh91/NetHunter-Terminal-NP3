@@ -3,6 +3,8 @@ apply plugin: 'kotlin-android'
 
 android {
   compileSdk rootProject.ext.android.COMPILE_SDK_VERSION
+  // Local build: the NDK/CMake versions installed on this machine
+  ndkVersion "29.0.14206865"
 
   defaultConfig {
     applicationId "com.offsec.nhterm"
@@ -40,6 +42,7 @@ android {
   externalNativeBuild {
     cmake {
       path "CMakeLists.txt"
+      version "4.1.2"
     }
   }
   compileOptions {
