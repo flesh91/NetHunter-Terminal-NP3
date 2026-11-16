@@ -3,13 +3,6 @@
 Форк [NetHunter Terminal](https://gitlab.com/kalilinux/nethunter/apps/kali-nethunter-term)
 (`com.offsec.nhterm`) — термінала Kali NetHunter, що, своєю чергою, базується на NeoTerm.
 
-Зібрано й перевірено на **Nothing Phone (3) (`Metroid`), Android 17**, з камерою в отворі по центру
-верхнього краю. Зміни не прив'язані до цього пристрою: вони працюють на будь-якому телефоні з
-вирізом під камеру (Android 9+), а решта — на будь-якому.
-
-Назва пакета та сама (`com.offsec.nhterm`), тож застосунок NetHunter відкриває цей термінал, як і
-оригінальний.
-
 ---
 
 ## Чим цей форк відрізняється
