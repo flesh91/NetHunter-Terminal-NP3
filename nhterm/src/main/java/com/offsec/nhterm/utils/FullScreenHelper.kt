@@ -112,7 +112,12 @@ class FullScreenHelper private constructor(
   private fun computeUsableHeight(): Int {
     val r = Rect()
     mChildOfContent.getWindowVisibleDisplayFrame(r)
-    return r.bottom - r.top
+    // Measure from the top of our window, not of the visible frame: in full screen the
+    // window extends into the camera cutout, which the visible frame leaves out, and the
+    // content would end that much above the keyboard.
+    val windowOnScreen = IntArray(2)
+    mChildOfContent.rootView.getLocationOnScreen(windowOnScreen)
+    return r.bottom - windowOnScreen[1]
   }
 
   companion object {

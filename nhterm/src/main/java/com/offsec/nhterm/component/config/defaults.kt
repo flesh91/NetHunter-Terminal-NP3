@@ -13,6 +13,7 @@ object DefaultValues {
   const val enableAutoHideToolbar = false
   const val enableSwitchNextTab = false
   const val enableExtraKeys = true
+  const val enableCloseOnExit = false
   const val enableExplicitExtraKeysWeight = false
   const val enableBackButtonBeMappedToEscape = false
   const val enableSpecialVolumeKeys = false

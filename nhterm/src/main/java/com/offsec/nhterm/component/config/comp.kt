@@ -280,6 +280,13 @@ object NeoPreference {
     )
   }
 
+  fun isCloseOnExitEnabled(): Boolean {
+    return loadBoolean(
+      R.string.key_ui_close_on_exit,
+      DefaultValues.enableCloseOnExit,
+    )
+  }
+
   fun isHideToolbarEnabled(): Boolean {
     return loadBoolean(
       R.string.key_ui_hide_toolbar,

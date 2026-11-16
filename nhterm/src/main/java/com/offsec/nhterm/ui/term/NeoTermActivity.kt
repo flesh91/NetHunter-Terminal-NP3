@@ -26,6 +26,7 @@ import com.offsec.nhterm.component.config.NeoPreference
 import com.offsec.nhterm.component.profile.ProfileComponent
 import com.offsec.nhterm.component.session.ShellParameter
 import com.offsec.nhterm.component.session.ShellProfile
+import com.offsec.nhterm.component.session.ShellTermSession
 import com.offsec.nhterm.component.session.XParameter
 import com.offsec.nhterm.component.session.XSession
 import com.offsec.nhterm.frontend.session.terminal.*
@@ -39,6 +40,7 @@ import de.mrapp.android.tabswitcher.*
 import org.greenrobot.eventbus.EventBus
 import org.greenrobot.eventbus.Subscribe
 import org.greenrobot.eventbus.ThreadMode
+import kotlin.math.max
 
 
 class NeoTermActivity : AppCompatActivity(), ServiceConnection, SharedPreferences.OnSharedPreferenceChangeListener {
@@ -75,6 +77,20 @@ class NeoTermActivity : AppCompatActivity(), ServiceConnection, SharedPreference
         WindowManager.LayoutParams.FLAG_FULLSCREEN,
         WindowManager.LayoutParams.FLAG_FULLSCREEN,
       )
+      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+        // Lay the window out under the camera cutout, so the toolbar takes that row
+        // instead of a black strip (or the terminal does, while the toolbar is hidden).
+        window.attributes = window.attributes.apply {
+          layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
+        }
+        // The legacy "system window" insets include the cutout, so the fitsSystemWindows
+        // containers above our layout would still pad everything away from it (down in
+        // portrait, sideways in landscape). Take the cutout out of them here; the
+        // navigation bar and IME insets stay.
+        window.decorView.setOnApplyWindowInsetsListener { view, insets ->
+          view.onApplyWindowInsets(withoutCutout(insets))
+        }
+      }
     }
 
     setContentView(R.layout.ui_main)
@@ -114,9 +130,8 @@ class NeoTermActivity : AppCompatActivity(), ServiceConnection, SharedPreference
       return
     }
 
-    if (NeoPreference.isFullScreenEnabled()
-      || NeoPreference.isHideToolbarEnabled()
-    ) {
+    // Only the "hide toolbar" setting hides it with the keyboard; full screen alone keeps it
+    if (NeoPreference.isHideToolbarEnabled()) {
       val toolbarHeight = toolbar.height.toFloat()
       val translationY = if (visible) 0.toFloat() else -toolbarHeight
       if (visible) {
@@ -233,9 +248,11 @@ class NeoTermActivity : AppCompatActivity(), ServiceConnection, SharedPreference
           } else if (tab is XSessionTab) {
             SessionRemover.removeXSession(termService, tab)
           }
+          finishIfNoTabsLeft()
         }
 
         override fun onAllTabsRemoved(tabSwitcher: TabSwitcher, tabs: Array<out Tab>, animation: Animation) {
+          finishIfNoTabsLeft()
         }
       },
     )
@@ -332,6 +349,18 @@ class NeoTermActivity : AppCompatActivity(), ServiceConnection, SharedPreference
         if (tab is TermTab) {
           tab.updateColorScheme()
         }
+      }
+    } else if (key == getString(R.string.key_ui_eks_enabled)) {
+      // Sessions copy this setting into their profile when they start; apply it to the
+      // running ones too, so the extra keys show or hide without a restart.
+      val enabled = NeoPreference.isExtraKeysEnabled()
+      termService?.sessions?.forEach {
+        (it as? ShellTermSession)?.shellProfile?.enableExtraKeys = enabled
+      }
+      // Other tabs pick it up when they are shown again
+      val tab = tabSwitcher.selectedTab
+      if (tab is TermTab) {
+        tab.termData.viewClient?.updateExtraKeys(tab.termData.termSession?.title, true)
       }
     }
   }
@@ -769,6 +798,42 @@ class NeoTermActivity : AppCompatActivity(), ServiceConnection, SharedPreference
         insets.systemWindowInsetBottom,
       )
       insets
+    }
+  }
+
+  /** The system window insets without the camera cutout, on whichever edge it is. */
+  @RequiresApi(Build.VERSION_CODES.P)
+  @Suppress("DEPRECATION")
+  private fun withoutCutout(insets: WindowInsets): WindowInsets {
+    val cutout = insets.displayCutout ?: return insets
+    if (insets.isConsumed) {
+      return insets
+    }
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+      // What the legacy insets hold besides the cutout: the visible bars and the IME
+      val bars = insets.getInsets(WindowInsets.Type.systemBars() or WindowInsets.Type.ime())
+      return insets.replaceSystemWindowInsets(bars.left, bars.top, bars.right, bars.bottom)
+    }
+    return insets.replaceSystemWindowInsets(
+      max(insets.systemWindowInsetLeft - cutout.safeInsetLeft, 0),
+      max(insets.systemWindowInsetTop - cutout.safeInsetTop, 0),
+      max(insets.systemWindowInsetRight - cutout.safeInsetRight, 0),
+      max(insets.systemWindowInsetBottom - cutout.safeInsetBottom, 0),
+    )
+  }
+
+  /**
+   * With "Close on exit", closing the last session closes the app instead of leaving an
+   * empty tab switcher.
+   */
+  private fun finishIfNoTabsLeft() {
+    if (!NeoPreference.isCloseOnExitEnabled()) {
+      return
+    }
+    tabSwitcher.post {
+      if (tabSwitcher.count == 0 && !isFinishing) {
+        finishAndRemoveTask()
+      }
     }
   }
 

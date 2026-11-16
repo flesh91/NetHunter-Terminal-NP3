@@ -245,13 +245,17 @@ class TermViewClient(val context: Context) :
   fun updateExtraKeys(title: String?, force: Boolean = false) {
     val extraKeysView = termSessionData?.extraKeysView
 
-    if (extraKeysView == null || title.isNullOrEmpty()) {
+    if (extraKeysView == null) {
+      return
+    }
+    // Apply the visibility even before the session has a title, so disabled keys do not
+    // show while a new session starts
+    val visible = updateExtraKeysVisibility()
+    if (title.isNullOrEmpty()) {
       return
     }
 
-    if ((lastTitle != title || force)
-      && updateExtraKeysVisibility()
-    ) {
+    if ((lastTitle != title || force) && visible) {
       removeExtraKeys()
       ComponentManager.getComponent<ExtraKeyComponent>().showShortcutKeys(title, extraKeysView)
       extraKeysView.updateButtons()

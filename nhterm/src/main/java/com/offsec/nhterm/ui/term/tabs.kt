@@ -60,6 +60,9 @@ class NeoTabDecorator(val context: NeoTermActivity) : TabSwitcherDecorator() {
         val extraKeysView = view.findViewById<ExtraKeysView>(R.id.extra_keys)
         Terminals.setupTerminalView(terminalView)
         Terminals.setupExtraKeysView(extraKeysView)
+        // Start from the setting; the session updates it once it is bound. Without this
+        // the keys show (layout default) until the session has a title.
+        extraKeysView.visibility = if (NeoPreference.isExtraKeysEnabled()) View.VISIBLE else View.GONE
 
         val colorSchemeManager = ComponentManager.getComponent<ColorSchemeComponent>()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -328,7 +331,12 @@ class TermTab(title: CharSequence) : NeoTab(title), TermUiPresenter {
   }
 
   override fun requireOnSessionFinished() {
-    // do nothing
+    // With "Close on exit", a shell that exits cleanly (e.g. `exit`) closes its tab right
+    // away; on an error the tab stays with "[Process completed (code N)]" so the output
+    // can still be read.
+    if (NeoPreference.isCloseOnExitEnabled() && termData.termSession?.exitStatus == 0) {
+      requireClose()
+    }
   }
 
   override fun requireCreateNew() {
